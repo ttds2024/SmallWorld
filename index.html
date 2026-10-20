@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#3b2a1a" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Nunito:wght@600;700;800&display=swap"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2715%27 fill=%27%232563eb%27/%3E%3Cpath d=%27M16 6a4 4 0 1 1 0 .1zM8 25q0-10 8-10t8 10z%27 fill=%27%23fff%27/%3E%3C/svg%3E"
+    />
+    <title>Small Realm</title>
+  </head>
+  <body>
+    <div id="realm" class="realm">
+      <header class="bar">
+        <h1>Small <span>Realm</span></h1>
+        <div class="turns" aria-label="Turn">
+          <span class="turns-label">Turn</span>
+          <div id="turns" class="pips"></div>
+        </div>
+        <div class="players">
+          <div id="player-0" class="player p0">
+            <span class="badge" aria-hidden="true"></span>
+            <span class="who"><b>You</b><span class="meta"></span></span>
+            <span class="coins" title="Victory coins">5</span>
+          </div>
+          <div id="player-1" class="player p1">
+            <span class="badge" aria-hidden="true"></span>
+            <span class="who"><b>Rival</b><span class="meta"></span></span>
+            <span class="coins" title="Victory coins">5</span>
+          </div>
+        </div>
+        <div class="bar-buttons">
+          <button id="rules-open" class="btn ghost">How to play</button>
+          <button id="new-game" class="btn ghost">New game</button>
+        </div>
+      </header>
+
+      <main class="board">
+        <div class="map-wrap">
+          <svg id="map" role="img" aria-label="Map of the realm"></svg>
+          <div id="toasts" class="toasts" aria-live="polite"></div>
+          <div id="die" class="die" aria-live="polite">
+            <span class="face"></span><span class="text"></span>
+          </div>
+        </div>
+
+        <aside class="panel">
+          <section class="status-box">
+            <h2 id="status"></h2>
+            <p id="hint"></p>
+          </section>
+          <section class="hand-box">
+            <div class="hand-title">Humans in hand <b id="hand-count">0</b></div>
+            <div id="hand" class="hand"></div>
+            <div class="actions">
+              <button id="finish" class="btn primary">Stop conquering</button>
+              <button id="end" class="btn primary">End turn &amp; score</button>
+              <button
+                id="decline"
+                class="btn"
+                title="Instead of conquering: every region keeps one token in decline and scores. Next turn a fresh band of Humans arrives."
+              >
+                Go into decline
+              </button>
+            </div>
+          </section>
+          <section id="card" class="card"></section>
+          <section class="log-box">
+            <h3>Chronicle</h3>
+            <ol id="log" class="log"></ol>
+          </section>
+        </aside>
+      </main>
+
+      <div id="overlay" class="overlay" hidden>
+        <div id="start" class="dialog" hidden>
+          <h2>Small <span>Realm</span></h2>
+          <p class="lead">
+            The realm is too small for two peoples. Lead your Humans against a rival band over
+            <b>10 turns</b>, and finish with the most victory coins.
+          </p>
+          <ul class="quick">
+            <li><b>Conquer</b> a region with 2 tokens, +1 per defender, +1 on a mountain.</li>
+            <li>
+              <b>Score</b> 1 coin per region each turn, +1 for each farmland your Humans hold.
+            </li>
+            <li>
+              <b>Decline</b> when your band is spread thin: it stays on the map and keeps scoring,
+              and a fresh band of 10 arrives.
+            </li>
+          </ul>
+          <div class="dialog-buttons">
+            <button class="btn primary big" data-start>Play against the Rival</button>
+          </div>
+        </div>
+
+        <div id="rules" class="dialog" hidden>
+          <h2>How to play</h2>
+          <ol class="rules">
+            <li>
+              <b>Your band.</b> You lead 10 Humans tokens. Each turn starts by picking up all your
+              tokens but one from each region you hold.
+            </li>
+            <li>
+              <b>Entering.</b> A band that holds no regions enters from any region on the edge of
+              the map. After that, each conquest must be next to a region you already hold.
+            </li>
+            <li>
+              <b>Conquering</b> costs 2 tokens, +1 for each token already there (a Lost Tribe counts
+              as 1) and +1 on a mountain. Lakes can't be taken. Click a glowing region; its badge
+              shows the cost.
+            </li>
+            <li>
+              <b>Final conquest.</b> When you are short, you may make one last attack with at least
+              one token: roll the reinforcement die (0, 0, 0, 1, 2, 3) and add it. Win or lose, that
+              ends your conquests for the turn.
+            </li>
+            <li>
+              <b>Losses.</b> A region's defender loses one token; the rest come back to them and are
+              spread over their regions. Lost Tribes and Humans in decline are wiped out.
+            </li>
+            <li>
+              <b>Redeploy.</b> When you stop, move tokens between your regions (each keeps at least
+              one), then end the turn.
+            </li>
+            <li>
+              <b>Scoring.</b> At the end of each turn: 1 coin per region you hold, in decline or
+              not, +1 coin per farmland held by your active Humans.
+            </li>
+            <li>
+              <b>Decline.</b> Instead of conquering, send your band into decline: one token stays on
+              each region and keeps scoring (no farmland bonus), your old declined band leaves the
+              map, and next turn a fresh band of 10 enters from the edge.
+            </li>
+            <li>
+              <b>Abandon.</b> Before your first conquest of a turn you may pull all tokens out of a
+              region back into your hand.
+            </li>
+          </ol>
+          <div class="dialog-buttons">
+            <button class="btn primary" data-close>Got it</button>
+          </div>
+        </div>
+
+        <div id="over" class="dialog" hidden>
+          <h2 id="over-title"></h2>
+          <p id="over-score" class="lead"></p>
+          <p id="over-best" class="muted"></p>
+          <div class="dialog-buttons">
+            <button id="again" class="btn primary big">Play again</button>
+            <button class="btn" data-close>Look at the map</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
