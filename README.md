@@ -5,6 +5,10 @@ single race, the Humans, against an AI rival over 10 turns. Conquer regions on a
 roll the reinforcement die for a last attack, go into decline when your band is spread thin, and
 finish with the most victory coins.
 
+Every game is played on a freshly generated island, made the way Amit Patel's
+[Polygonal Map Generation for Games](http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/)
+describes: Voronoi polygons, elevation, rivers, moisture and biomes, with noisy coastlines.
+
 See [docs/DESIGN.md](docs/DESIGN.md) for the rules and design decisions.
 
 ## Development

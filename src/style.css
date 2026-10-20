@@ -262,7 +262,7 @@ button {
   border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
-  background: var(--paper);
+  background: #44447a;
 }
 
 #map {
@@ -273,44 +273,66 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+.ground,
+.ground * {
+  pointer-events: none;
+}
+
+.terrain path {
+  stroke-width: 0.8;
+}
+
+.river {
+  fill: none;
+  stroke: #2f5f9a;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The coastline: a pale band of surf, then a dark line. */
+.surf {
+  fill: none;
+  stroke: rgba(225, 235, 255, 0.28);
+  stroke-width: 7;
+  stroke-linejoin: round;
+}
+
+.shore {
+  fill: none;
+  stroke: rgba(30, 30, 60, 0.7);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+/* Regions are drawn over the terrain: clear inside, with a dark border. */
 .region {
-  stroke: #4b3826;
-  stroke-width: 2.5;
+  fill: transparent;
+  fill-rule: evenodd;
+  stroke: rgba(40, 26, 12, 0.85);
+  stroke-width: 2.2;
   stroke-linejoin: round;
   cursor: pointer;
-  transition: filter 0.15s;
+  transition: fill 0.15s;
 }
 
 .region:hover {
-  filter: brightness(1.08);
+  fill: rgba(255, 250, 230, 0.16);
 }
 
-.t-farmland {
-  fill: var(--farmland);
-}
-.t-forest {
-  fill: var(--forest);
-}
-.t-hills {
-  fill: var(--hills);
-}
-.t-swamp {
-  fill: var(--swamp);
-}
-.t-mountain {
-  fill: var(--mountain);
-}
-.t-lake {
-  fill: var(--lake);
+.region.lake {
   cursor: default;
 }
 
+.region.lake:hover {
+  fill: transparent;
+}
+
 .region.target {
+  fill: rgba(255, 246, 208, 0.18);
   stroke: #fff6d0;
-  stroke-width: 4;
+  stroke-width: 3.5;
   stroke-dasharray: 10 6;
   animation: march 1.2s linear infinite;
-  filter: brightness(1.12);
 }
 
 .region.selected {
@@ -320,7 +342,7 @@ button {
 }
 
 .region.deployable:hover {
-  filter: brightness(1.18);
+  fill: rgba(255, 250, 230, 0.28);
 }
 
 @keyframes march {
@@ -370,7 +392,19 @@ button {
 }
 
 .waves {
-  stroke: #e8f4ff;
+  stroke: #2f6d9e;
+}
+
+.icon-bg {
+  fill: rgba(255, 248, 230, 0.85);
+  stroke: rgba(40, 26, 12, 0.5);
+  stroke-width: 1;
+}
+
+.seed {
+  align-self: center;
+  font-size: 0.8rem;
+  opacity: 0.7;
 }
 
 .name {
@@ -386,6 +420,7 @@ button {
 
 .tint {
   stroke: none;
+  fill-rule: evenodd;
 }
 
 .tint.p0 {
@@ -854,7 +889,8 @@ button {
     transform: translateY(-18px);
   }
 
-  .icon {
+  .icon,
+  .icon-bg {
     display: none;
   }
 

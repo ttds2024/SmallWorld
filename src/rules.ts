@@ -110,7 +110,7 @@ export class Game {
 
   /**
    * Whether the current player may attack the region: not a lake, not their own, and next to their
-   * active Humans, or on the edge of the map while they hold nothing with them.
+   * active Humans, or on the coast while they hold nothing with them (a new band lands from the sea).
    */
   canAttack(region: number): boolean {
     if (this.phase !== 'conquer' || !this.player.active) return false;
@@ -118,7 +118,7 @@ export class Game {
     const state = this.regions[region]!;
     if (info.terrain === 'lake' || state.owner === this.current) return false;
     const held = this.activeRegions();
-    if (held.length === 0) return info.border;
+    if (held.length === 0) return info.coast;
     return info.neighbours.some((n) => held.includes(n));
   }
 
