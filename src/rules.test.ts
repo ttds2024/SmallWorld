@@ -175,3 +175,30 @@ describe('Game', () => {
     expect(g.apply({ type: 'finish' }).ok).toBe(false);
   });
 });
+
+describe('Sieges', () => {
+  it('takes the region when the siege is won', () => {
+    const g = game();
+    expect(g.apply({ type: 'conquer', region: SHORE, battle: 'won' }).ok).toBe(true);
+    expect(g.regions[SHORE]).toMatchObject({ owner: 0, tokens: 2 });
+    expect(g.phase).toBe('conquer');
+  });
+
+  it('keeps the tokens and stops conquering when the siege is lost', () => {
+    const g = game();
+    g.apply({ type: 'conquer', region: SHORE, battle: 'lost' });
+    expect(g.regions[SHORE]!.owner).toBe(null);
+    expect(g.player.hand).toBe(HUMAN_TOKENS);
+    expect(g.phase).toBe('redeploy');
+  });
+
+  it('replaces the die when short of tokens: a won siege takes the region with all of them', () => {
+    const g = game(0); // the die would roll 0
+    g.player.hand = 1;
+    const out = g.apply({ type: 'conquer', region: COAST_TRIBE, battle: 'won' });
+    expect(out.roll).toBeUndefined();
+    expect(g.regions[COAST_TRIBE]).toMatchObject({ owner: 0, tokens: 1, lostTribe: false });
+    expect(g.player.hand).toBe(0);
+    expect(g.phase).toBe('redeploy');
+  });
+});

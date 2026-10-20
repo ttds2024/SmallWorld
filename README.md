@@ -9,6 +9,9 @@ Every game is played on a freshly generated island, made the way Amit Patel's
 [Polygonal Map Generation for Games](http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/)
 describes: Voronoi polygons, elevation, rivers, moisture and biomes, with noisy coastlines.
 
+Your attacks are fought as sieges: aim a catapult at the defenders' castle and bring it down with
+stones and fireballs before your shots run out (or turn **Fight battles** off for the plain rules).
+
 See [docs/DESIGN.md](docs/DESIGN.md) for the rules and design decisions.
 
 ## Development

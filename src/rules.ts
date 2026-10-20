@@ -35,7 +35,11 @@ export interface RegionState {
 export type Phase = 'conquer' | 'redeploy' | 'over';
 
 export type Action =
-  | { type: 'conquer'; region: number }
+  /**
+   * With `battle`, the attack was fought as a siege and that settles it; without, the usual rules
+   * apply (with the reinforcement die when short of tokens).
+   */
+  | { type: 'conquer'; region: number; battle?: 'won' | 'lost' }
   | { type: 'abandon'; region: number }
   | { type: 'decline' }
   | { type: 'finish' }
@@ -139,7 +143,7 @@ export class Game {
     if (this.phase === 'over') return fail('The game is over.');
     switch (action.type) {
       case 'conquer':
-        return this.conquer(action.region);
+        return this.conquer(action.region, action.battle);
       case 'abandon':
         return this.abandon(action.region);
       case 'decline':
@@ -175,14 +179,22 @@ export class Game {
     }
   }
 
-  private conquer(region: number): Outcome {
+  private conquer(region: number, battle?: 'won' | 'lost'): Outcome {
     if (!this.canAttack(region)) return fail('You cannot attack that region.');
     const p = this.player;
     if (p.hand < 1) return fail('No tokens left in hand.');
     const name = this.map.regions[region]!.name;
     const cost = this.cost(region);
     let roll: number | undefined;
-    if (p.hand < cost) {
+    if (battle !== undefined) {
+      // A lost siege, or a won one short of tokens, ends the turn's conquests like the die would.
+      if (battle === 'lost' || p.hand < cost) this.phase = 'redeploy';
+      if (battle === 'lost') {
+        const message = `${p.name} are driven back from ${name}.`;
+        this.note(message);
+        return { ok: true, message };
+      }
+    } else if (p.hand < cost) {
       // Final conquest: the reinforcement die makes up the difference, or it fails.
       roll = DIE_FACES[Math.floor(this.random() * DIE_FACES.length)]!;
       this.phase = 'redeploy';
