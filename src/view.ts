@@ -1,4 +1,6 @@
 import { nextMove } from './ai';
+import { castleStrength, shotsFor } from './battle';
+import { openSiege } from './battle-view';
 import { lineOf, pathOf, type Point } from './geometry';
 import { buildMap, randomSeed, type GameMap, type Terrain } from './map';
 import type { Biome } from './mapgen';
@@ -6,6 +8,7 @@ import { Game, GAME_TURNS, type Action, type Outcome, type PlayerId } from './ru
 
 const SVG = 'http://www.w3.org/2000/svg';
 const BEST_KEY = 'smallrealm.best';
+const BATTLES_KEY = 'smallrealm.battles';
 /** Pause between the rival's moves, so you can follow them. */
 const AI_STEP_MS = 650;
 const AI_PLACE_MS = 140;
@@ -94,6 +97,23 @@ function readBest(): number {
   }
 }
 
+/** Whether your attacks are fought as sieges (on unless turned off). */
+function readBattles(): boolean {
+  try {
+    return localStorage.getItem(BATTLES_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+function saveBattles(on: boolean): void {
+  try {
+    localStorage.setItem(BATTLES_KEY, on ? 'on' : 'off');
+  } catch {
+    // Not kept in private windows; the toggle still works for this visit.
+  }
+}
+
 function saveBest(score: number): void {
   try {
     localStorage.setItem(BEST_KEY, String(score));
@@ -108,6 +128,8 @@ export class GameView {
   private selected: number | null = null;
   /** A target the player clicked without enough tokens: asks before rolling the die. */
   private pendingRoll: number | null = null;
+  /** Your attacks are fought as sieges. */
+  private battles = readBattles();
   private aiTimer = 0;
   private lastOwners: (PlayerId | null)[] = [];
 
@@ -207,6 +229,13 @@ export class GameView {
     this.$('#decline').addEventListener('click', () => this.act({ type: 'decline' }));
     this.$('#finish').addEventListener('click', () => this.act({ type: 'finish' }));
     this.$('#end').addEventListener('click', () => this.act({ type: 'end' }));
+    const battles = this.$<HTMLInputElement>('#battles');
+    battles.checked = this.battles;
+    battles.addEventListener('change', () => {
+      this.battles = battles.checked;
+      saveBattles(this.battles);
+      this.render();
+    });
     this.$('#rules-open').addEventListener('click', () => this.openDialog('#rules'));
     this.$('#new-game').addEventListener('click', () => {
       this.newGame();
@@ -267,7 +296,7 @@ export class GameView {
       if (g.phase === 'conquer' && g.canAttack(id)) {
         if (g.player.hand >= g.cost(id)) {
           this.selected = null;
-          this.act({ type: 'conquer', region: id });
+          this.attack(id);
           return;
         }
         if (g.player.hand >= 1) this.pendingRoll = id;
@@ -279,6 +308,56 @@ export class GameView {
     }
     this.selected = this.selected === id && this.pendingRoll === null ? null : id;
     this.render();
+  }
+
+  /** Attacks a region: as a siege when battles are on, else by the plain rules. */
+  private attack(id: number): void {
+    const g = this.game;
+    if (!this.battles) {
+      this.act({ type: 'conquer', region: id });
+      return;
+    }
+    const r = g.regions[id]!;
+    const info = this.map.regions[id]!;
+    const tokens = `${r.tokens} token${r.tokens === 1 ? '' : 's'}`;
+    const defender = r.lostTribe
+      ? 'a Lost Tribe'
+      : r.owner === null
+        ? 'no one: an empty keep'
+        : r.declined
+          ? `${g.players[r.owner].name} in decline`
+          : `${g.players[r.owner].name} (${tokens})`;
+    const colour = r.lostTribe
+      ? '#6d5a43'
+      : r.owner === null
+        ? '#8a8378'
+        : r.declined
+          ? '#8d8578'
+          : r.owner === 0
+            ? '#2563eb'
+            : '#c2412d';
+    this.pendingRoll = null;
+    this.selected = null;
+    this.render();
+    openSiege(
+      this.root,
+      {
+        region: info.name,
+        terrain: info.terrain,
+        defender,
+        colour,
+        cost: g.cost(id),
+        hand: g.player.hand,
+        seed: Math.floor(Math.random() * 1e9),
+      },
+      (result) => {
+        if (result === 'retreat') return;
+        const out = this.game.apply({ type: 'conquer', region: id, battle: result });
+        if (out.ok) this.toast(out.message, result === 'lost' ? 'warn' : '');
+        else this.report(out);
+        this.afterMove();
+      },
+    );
   }
 
   private act(action: Action): void {
@@ -508,8 +587,32 @@ export class GameView {
     if (g.phase === 'conquer' && g.canAttack(id)) {
       const cost = g.cost(id);
       if (g.player.hand >= cost) {
-        const b = el('button', 'btn primary', `Conquer (${cost} tokens)`);
-        b.addEventListener('click', () => this.act({ type: 'conquer', region: id }));
+        const b = el(
+          'button',
+          'btn primary',
+          this.battles ? `Lay siege (${cost} tokens)` : `Conquer (${cost} tokens)`,
+        );
+        b.addEventListener('click', () => this.attack(id));
+        actions.append(b);
+        if (this.battles) {
+          card.append(
+            el(
+              'p',
+              'muted',
+              `Castle strength ${castleStrength(cost)}, ${shotsFor(cost, g.player.hand)} shots.`,
+            ),
+          );
+        }
+      } else if (g.player.hand >= 1 && this.battles) {
+        card.append(
+          el(
+            'p',
+            'warn',
+            `Costs ${cost}, you have ${g.player.hand}: storm the castle (strength ${castleStrength(cost)}) with only ${shotsFor(cost, g.player.hand)} shots. Win or lose, this ends your conquests.`,
+          ),
+        );
+        const b = el('button', 'btn primary', '🔥 Storm the castle');
+        b.addEventListener('click', () => this.attack(id));
         actions.append(b);
       } else if (g.player.hand >= 1) {
         const need = cost - g.player.hand;

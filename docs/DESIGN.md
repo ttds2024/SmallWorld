@@ -72,6 +72,35 @@ with 5 coins; the most coins at the end wins.
 Differences from the board game: one race, no special-power badges (the badge's tokens are folded
 into the band's 10), no race-picking coins, and lost tokens are redeployed automatically.
 
+## Battles
+
+With **Fight battles** on (the default; the toggle under the actions, remembered in local
+storage), each of your attacks is a siege (`src/battle.ts` simulates it, `src/battle-view.ts` draws
+it on a canvas). The Rival's attacks still resolve by the plain rules, instantly.
+
+- **The scene:** your catapult on the left under your blue banner, the defenders' castle on the
+  right under theirs (red for the Rival, brown for a Lost Tribe, grey for Humans in decline or an
+  empty keep). The backdrop follows the region's terrain (fields, forest, hills, swamp; mountain
+  castles stand on a hill). Wind, shown at the top, pushes every shot a little.
+- **Aiming:** drag back from the catapult and let go, like a slingshot; the first part of the
+  flight is dotted, and the last shot's path stays faint. Or ←/→ for power, ↑/↓ for the angle
+  (10°–80°), Space to fire, 1/2 for the ammo.
+- **Castle strength:** 40, +20 per token above 2 that the attack costs (defenders, mountain).
+  Taller towers for stronger castles.
+- **Shots:** cost + 3 with enough tokens. **Fireballs** (2 per siege, each uses a shot) hit
+  harder (about 35 against 16 for a stone), splash the two nearest blocks and set the struck one
+  burning. Faster shots hit harder.
+- **Damage:** every hit shows its damage over the castle (orange for fire); the HUD shows the
+  castle's strength left, the damage dealt so far, the shots left and the wind. Blocks crack, then
+  crumble, and the ones above drop into the gap.
+- **Win:** strength 0: the castle falls, your banner goes up on the rubble and the region is
+  taken as usual (the attack's tokens move in).
+- **Lose:** the shots run out first: "Driven back!" — you keep your tokens but your conquests end
+  for the turn (like a failed final roll). **Retreat** mid-siege counts as a loss; **Call off the
+  attack** before the first shot costs nothing.
+- **Short of tokens:** instead of rolling the reinforcement die you storm the castle with only
+  tokens + 1 shots; a win takes the region with all your tokens and ends your conquests.
+
 ## The Rival
 
 `src/ai.ts` plays one move at a time, ~0.65 s apart so you can follow it:
