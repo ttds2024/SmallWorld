@@ -5,13 +5,44 @@ the Humans. The page is `index.html`; the code is in `src/`.
 
 ## The map
 
-- 24 regions: Voronoi cells around hand-placed points (`src/map.ts`), with wobbly
-  hand-drawn inner borders. A border's wobble depends only on its two end points, so both sides
-  draw the same line.
-- Terrains: farmland (6), forest, hills, swamp, mountain and two lakes. 8 regions start with a Lost
-  Tribe token. Regions touching the frame are the map's edge.
-- Neighbours share an edge, not just a corner. Lakes can't be conquered, so the map is crossed on
-  land.
+Every game is played on a freshly drawn island (`Island #seed` in the top bar; **Another island**
+on the start screen draws a new one). The terrain follows Amit Patel's
+[Polygonal Map Generation for Games](http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/)
+and its reference code, [mapgen2](https://github.com/amitp/mapgen2) (`src/mapgen.ts`):
+
+1. **Polygons:** 1,600 random points, spread out by 2 rounds of Lloyd relaxation, give a Voronoi
+   mesh (with [d3-delaunay](https://github.com/d3/d3-delaunay)): cells, the corners where three
+   cells meet, and the edges between them.
+2. **Island shape:** fractal noise against a threshold that rises towards the map's edge
+   (`noise > 0.2 + 0.35·r²`) decides which corners are water; a cell with 30% or more water
+   corners is water. Water connected to the map's edge is ocean, the rest lakes.
+3. **Elevation:** distance from the map's edge, climbing only over land (so lakes sit low), then
+   redistributed so that low ground is common and peaks rare (mapgen2's formula, scale 1.1).
+4. **Rivers:** from random corners between 0.3 and 0.9 elevation, downhill to the sea; the more
+   rivers share an edge, the wider it is drawn.
+5. **Moisture:** from rivers and lakes, decaying by 10% per step, and 1 by the sea; then spread
+   evenly over the land.
+6. **Biomes:** the Whittaker table from elevation and moisture (snow, tundra, taiga, forests,
+   grassland, deserts…), plus marsh on wet lowland, beach on the coast. Colours are mapgen2's; cells
+   are lightly hill-shaded with light from the north-west.
+7. **Noisy edges:** each polygon side wanders inside the quadrilateral of its two corners and two
+   cell centres, so neighbouring sides never cross; coast, rivers and biome changes get the finest
+   detail.
+
+The game's regions are built on top (`src/map.ts`):
+
+- Play happens on the main island; smaller islands are scenery. Lakes of 4+ cells become lake
+  regions (unconquerable); smaller ponds belong to the land around them.
+- 22 land regions grow from evenly spread seeds (k-means over the land) in a weighted flood fill
+  that costs more uphill and much more across a river, so borders tend to follow rivers and
+  ridges.
+- A region's terrain is the one most of its cells have (biomes map to farmland, forest, hills,
+  mountain or swamp); mountain and swamp win from 30% of its cells.
+- Regions on the sea are coastal: a band with no regions lands there. A third of the land starts
+  under Lost Tribes. Names are made from parts that fit the terrain (Oakfield, Stormcrag, Greyfen).
+- An island that makes a poor board (main island too small or too big, more than 3 lakes, land
+  split by a lake, a region under 14 cells, fewer than 6 coastal regions) is skipped for the next
+  seed.
 
 ## Rules
 
@@ -21,8 +52,8 @@ with 5 coins; the most coins at the end wins.
 - **A band** is 10 Humans tokens. At the start of each turn every region keeps 1 token and the
   rest go to hand.
 - **Conquering** costs 2 tokens, +1 per token in the region (a Lost Tribe counts as 1), +1 on a
-  mountain. A band with no regions enters from the edge; after that, conquests must touch its
-  regions. You can't attack your own regions, active or in decline.
+  mountain. A band with no regions lands on any coastal region; after that, conquests must touch
+  its regions. You can't attack your own regions, active or in decline.
 - **Final conquest:** short of tokens (but with at least 1), you may roll the reinforcement die
   (0, 0, 0, 1, 2, 3). Success or not, conquering ends for the turn.
 - **Losses:** the defender loses 1 token; the rest are spread over their regions (one at a time
@@ -36,7 +67,7 @@ with 5 coins; the most coins at the end wins.
   held by active Humans (the Humans' race power).
 - **Decline** replaces the turn's conquests: each region keeps 1 token in decline and scores (no
   farmland bonus); an older band in decline leaves the map. The next turn a fresh band of 10
-  enters from the edge.
+  lands on the coast.
 
 Differences from the board game: one race, no special-power badges (the badge's tokens are folded
 into the band's 10), no race-picking coins, and lost tokens are redeployed automatically.

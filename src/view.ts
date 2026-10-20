@@ -1,6 +1,7 @@
 import { nextMove } from './ai';
-import { pathOf, type Point } from './geometry';
-import { buildMap, type GameMap, type Terrain } from './map';
+import { lineOf, pathOf, type Point } from './geometry';
+import { buildMap, randomSeed, type GameMap, type Terrain } from './map';
+import type { Biome } from './mapgen';
 import { Game, GAME_TURNS, type Action, type Outcome, type PlayerId } from './rules';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -18,9 +19,46 @@ const TERRAIN_NAMES: Record<Terrain, string> = {
   lake: 'Lake',
 };
 
-/** A small drawing of the terrain, centred on (x, y). */
+/** Biome colours from mapgen2. */
+const BIOME_COLOURS: Record<Biome, string> = {
+  OCEAN: '#44447a',
+  LAKE: '#336699',
+  MARSH: '#2f6666',
+  ICE: '#99ffff',
+  BEACH: '#a09077',
+  SNOW: '#ffffff',
+  TUNDRA: '#bbbbaa',
+  BARE: '#888888',
+  SCORCHED: '#555555',
+  TAIGA: '#99aa77',
+  SHRUBLAND: '#889977',
+  TEMPERATE_DESERT: '#c9d29b',
+  TEMPERATE_RAIN_FOREST: '#448855',
+  TEMPERATE_DECIDUOUS_FOREST: '#679459',
+  GRASSLAND: '#88aa55',
+  SUBTROPICAL_DESERT: '#d2b98b',
+  TROPICAL_RAIN_FOREST: '#337755',
+  TROPICAL_SEASONAL_FOREST: '#559944',
+};
+const SHALLOW_SEA = '#52548c';
+
+/** A colour made lighter (shade > 1) or darker (< 1). */
+function shaded(hex: string, shade: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const channel = (v: number) =>
+    Math.round(Math.min(255, Math.max(0, v * shade)))
+      .toString(16)
+      .padStart(2, '0');
+  return `#${channel(n >> 16)}${channel((n >> 8) & 255)}${channel(n & 255)}`;
+}
+
+/** A small drawing of the terrain on a light disc, centred on (x, y). */
 function terrainIcon(terrain: Terrain, x: number, y: number): string {
-  const at = `transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"`;
+  const at = `transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(0.7)"`;
+  return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><circle class="icon-bg" r="14"/></g>${terrainGlyph(terrain, at)}`;
+}
+
+function terrainGlyph(terrain: Terrain, at: string): string {
   switch (terrain) {
     case 'farmland':
       return `<g ${at} class="icon wheat"><path d="M-10 10V-6M0 10V-10M10 10V-6"/><path d="M-10-6l-4-4M-10-6l4-4M0-10l-4-4M0-10l4-4M10-6l-4-4M10-6l4-4M-10 0l-4-4M-10 0l4-4M0-4l-4-4M0-4l4-4M10 0l-4-4M10 0l4-4"/></g>`;
@@ -65,7 +103,7 @@ function saveBest(score: number): void {
 }
 
 export class GameView {
-  private readonly map: GameMap = buildMap();
+  private map!: GameMap;
   private game!: Game;
   private selected: number | null = null;
   /** A target the player clicked without enough tokens: asks before rolling the die. */
@@ -74,17 +112,19 @@ export class GameView {
   private lastOwners: (PlayerId | null)[] = [];
 
   private readonly svg: SVGSVGElement;
+  /** Owner tints, under the region borders. */
+  private readonly tints: SVGGElement;
+  /** Tokens and cost badges, on top. */
   private readonly dynamic: SVGGElement;
-  private readonly paths: SVGPathElement[] = [];
+  private paths: SVGPathElement[] = [];
 
   private readonly $ = <T extends HTMLElement>(sel: string) => this.root.querySelector<T>(sel)!;
 
   constructor(private readonly root: HTMLElement) {
     this.svg = this.$<HTMLElement>('#map') as unknown as SVGSVGElement;
-    this.drawTerrain();
+    this.tints = document.createElementNS(SVG, 'g');
     this.dynamic = document.createElementNS(SVG, 'g');
     this.dynamic.setAttribute('class', 'dynamic');
-    this.svg.append(this.dynamic);
     this.bindControls();
     this.newGame();
     this.openDialog('#start');
@@ -92,28 +132,58 @@ export class GameView {
 
   // ----- Setup -----
 
+  /** Draws the island: terrain, rivers and coast, then the regions' borders and labels. */
   private drawTerrain(): void {
-    const { width, height, regions } = this.map;
+    const { width, height, regions, art } = this.map;
     this.svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    const land = document.createElementNS(SVG, 'g');
-    const icons: string[] = [];
-    for (const r of regions) {
+
+    // Polygons of the same (shaded) colour share one path.
+    const byColour = new Map<string, string[]>();
+    for (const cell of art.cells) {
+      const base = cell.shallow ? SHALLOW_SEA : BIOME_COLOURS[cell.biome];
+      const colour = shaded(base, Math.round(cell.shade * 20) / 20);
+      const list = byColour.get(colour) ?? [];
+      list.push(pathOf([cell.polygon]));
+      byColour.set(colour, list);
+    }
+    const terrain = [...byColour]
+      .map(([colour, d]) => `<path fill="${colour}" stroke="${colour}" d="${d.join('')}"/>`)
+      .join('');
+    const rivers = art.rivers
+      .map(
+        (r) => `<path class="river" stroke-width="${r.width.toFixed(1)}" d="${lineOf(r.path)}"/>`,
+      )
+      .join('');
+    const coast = pathOf(art.coastline);
+    const ground = document.createElementNS(SVG, 'g');
+    ground.setAttribute('class', 'ground');
+    ground.innerHTML =
+      `<g class="terrain">${terrain}</g>` +
+      `<path class="surf" d="${coast}"/><path class="shore" d="${coast}"/>${rivers}`;
+
+    const borders = document.createElementNS(SVG, 'g');
+    this.paths = regions.map((r) => {
       const path = document.createElementNS(SVG, 'path');
       path.setAttribute('d', pathOf(r.outline));
-      path.setAttribute('class', `region t-${r.terrain}`);
+      path.setAttribute('class', `region${r.terrain === 'lake' ? ' lake' : ''}`);
       path.dataset.id = String(r.id);
-      land.append(path);
-      this.paths.push(path);
-      icons.push(terrainIcon(r.terrain, r.centre.x, r.centre.y - 30));
-      icons.push(
+      borders.append(path);
+      return path;
+    });
+
+    const labels: string[] = [];
+    for (const r of regions) {
+      labels.push(terrainIcon(r.terrain, r.centre.x, r.centre.y - 30));
+      labels.push(
         `<text class="name" x="${r.centre.x.toFixed(1)}" y="${(r.centre.y - 4).toFixed(1)}">${r.name}</text>`,
       );
     }
     const frame = `<rect class="frame" x="1.5" y="1.5" width="${width - 3}" height="${height - 3}" rx="6"/>`;
     const deco = document.createElementNS(SVG, 'g');
     deco.setAttribute('class', 'deco');
-    deco.innerHTML = icons.join('') + frame;
-    this.svg.append(land, deco);
+    deco.innerHTML = labels.join('') + frame;
+    this.svg.replaceChildren(ground, this.tints, borders, deco, this.dynamic);
+    this.$('#map-seed').textContent = `Island #${this.map.seed}`;
   }
 
   private bindControls(): void {
@@ -145,12 +215,13 @@ export class GameView {
     this.root.querySelectorAll<HTMLButtonElement>('[data-start]').forEach((b) =>
       b.addEventListener('click', () => {
         this.closeDialogs();
-        this.toast('Turn 1 — enter the map from any edge region');
+        this.toast('Turn 1 — land on any coastal region');
       }),
     );
     this.root
       .querySelectorAll<HTMLButtonElement>('[data-close]')
       .forEach((b) => b.addEventListener('click', () => this.closeDialogs()));
+    this.$('#reroll').addEventListener('click', () => this.newGame());
     this.$('#again').addEventListener('click', () => {
       this.newGame();
       this.closeDialogs();
@@ -169,8 +240,11 @@ export class GameView {
     return target ? Number(target.dataset.id) : null;
   }
 
+  /** A new game on a freshly drawn island. */
   private newGame(): void {
     window.clearTimeout(this.aiTimer);
+    this.map = buildMap(randomSeed());
+    this.drawTerrain();
     this.game = new Game(this.map);
     this.selected = null;
     this.pendingRoll = null;
@@ -282,6 +356,7 @@ export class GameView {
     const mine = this.playerTurn();
     const targets = new Set(mine && g.phase === 'conquer' ? g.targets() : []);
     const parts: string[] = [];
+    const tints: string[] = [];
     this.paths.forEach((path, id) => {
       const r = g.regions[id]!;
       const own = r.owner !== null && !r.declined && r.owner === g.current;
@@ -290,7 +365,7 @@ export class GameView {
       path.classList.toggle('deployable', mine && g.phase === 'redeploy' && own);
       const info = this.map.regions[id]!;
       if (r.owner !== null) {
-        parts.push(
+        tints.push(
           `<path class="tint p${r.owner}${r.declined ? ' declined' : ''}" d="${path.getAttribute('d')}"/>`,
         );
       }
@@ -305,6 +380,7 @@ export class GameView {
       parts.push(this.token(this.map.regions[id]!.centre, r, fresh, id));
     });
     this.lastOwners = g.regions.map((r) => r.owner);
+    this.tints.innerHTML = tints.join('');
     this.dynamic.innerHTML = parts.join('');
   }
 
@@ -374,7 +450,7 @@ export class GameView {
       status.textContent = `Turn ${g.turn}: conquer`;
       hint.textContent =
         g.activeRegions().length === 0
-          ? 'Enter the map: click a glowing region on its edge. The badge shows the tokens it costs.'
+          ? 'Land on the island: click a glowing coastal region. The badge shows the tokens it costs.'
           : 'Click a glowing region next to yours to conquer it. Short of tokens? Your last attack can roll the reinforcement die.';
     } else {
       status.textContent = `Turn ${g.turn}: redeploy`;
@@ -424,7 +500,7 @@ export class GameView {
     }
     if (info.terrain === 'mountain') lines.push('Mountain: +1 to conquer.');
     if (info.terrain === 'farmland') lines.push('Farmland: Humans earn +1 coin here.');
-    if (info.border) lines.push('On the edge of the map.');
+    if (info.coast) lines.push('On the coast: a new band can land here.');
     for (const line of lines) card.append(el('p', '', line));
 
     if (!this.playerTurn()) return;

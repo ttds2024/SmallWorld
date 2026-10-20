@@ -37,6 +37,7 @@
           </div>
         </div>
         <div class="bar-buttons">
+          <span id="map-seed" class="seed" title="This island's number"></span>
           <button id="rules-open" class="btn ghost">How to play</button>
           <button id="new-game" class="btn ghost">New game</button>
         </div>
@@ -83,8 +84,9 @@
         <div id="start" class="dialog" hidden>
           <h2>Small <span>Realm</span></h2>
           <p class="lead">
-            The realm is too small for two peoples. Lead your Humans against a rival band over
-            <b>10 turns</b>, and finish with the most victory coins.
+            The island is too small for two peoples. Land your Humans on its shores, fight a rival
+            band over <b>10 turns</b>, and finish with the most victory coins. Every game is played
+            on a freshly drawn island.
           </p>
           <ul class="quick">
             <li><b>Conquer</b> a region with 2 tokens, +1 per defender, +1 on a mountain.</li>
@@ -98,6 +100,7 @@
           </ul>
           <div class="dialog-buttons">
             <button class="btn primary big" data-start>Play against the Rival</button>
+            <button id="reroll" class="btn" title="Draw a different island">Another island</button>
           </div>
         </div>
 
@@ -109,8 +112,8 @@
               tokens but one from each region you hold.
             </li>
             <li>
-              <b>Entering.</b> A band that holds no regions enters from any region on the edge of
-              the map. After that, each conquest must be next to a region you already hold.
+              <b>Landing.</b> A band that holds no regions lands from the sea on any coastal region.
+              After that, each conquest must be next to a region you already hold.
             </li>
             <li>
               <b>Conquering</b> costs 2 tokens, +1 for each token already there (a Lost Tribe counts
@@ -137,7 +140,7 @@
             <li>
               <b>Decline.</b> Instead of conquering, send your band into decline: one token stays on
               each region and keeps scoring (no farmland bonus), your old declined band leaves the
-              map, and next turn a fresh band of 10 enters from the edge.
+              map, and next turn a fresh band of 10 lands on the coast.
             </li>
             <li>
               <b>Abandon.</b> Before your first conquest of a turn you may pull all tokens out of a
