@@ -855,6 +855,85 @@ button {
   margin-top: 16px;
 }
 
+/* ----- Sign-in ----- */
+
+.btn.account {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn.account.signed-in {
+  border-color: var(--gold);
+}
+
+.avatar {
+  width: 22px;
+  height: 22px;
+  margin: -4px 0;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.providers {
+  display: grid;
+  gap: 10px;
+}
+
+.btn.provider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 18px;
+  font-size: 1rem;
+  color: #fff;
+  border: none;
+}
+
+.btn.provider:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.btn.provider .mark {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: 13px;
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+
+.btn.provider.yandex {
+  background: #000;
+}
+
+.btn.provider.yandex .mark {
+  background: #fc3f1d;
+}
+
+.btn.provider.vk {
+  background: #0077ff;
+}
+
+.btn.provider.vk .mark {
+  background: #fff;
+  color: #0077ff;
+}
+
+.login-message {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--rival-soft);
+  color: var(--ink);
+}
+
 /* ----- Small screens ----- */
 
 @media (max-width: 900px) {

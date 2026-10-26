@@ -23,6 +23,16 @@ npm run check    # typecheck, lint, format check, unit tests
 npm run build    # production build in dist/
 ```
 
+### Sign-in
+
+Players can sign in with Yandex ID or VK ID through the [GameServer](GameServer/README.md). The dev
+server talks to `https://localhost:7002`; set `VITE_GAME_SERVER_URL` to point elsewhere. Builds
+without it (such as GitHub Pages today) hide the **Sign in** button.
+
+```sh
+VITE_GAME_SERVER_URL=https://api.example.com npm run build
+```
+
 ## Deploying
 
 The **Deploy to GitHub Pages** workflow builds and publishes the game on every push to `main`

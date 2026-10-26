@@ -40,6 +40,7 @@
           <span id="map-seed" class="seed" title="This island's number"></span>
           <button id="rules-open" class="btn ghost">How to play</button>
           <button id="new-game" class="btn ghost">New game</button>
+          <button id="account" class="btn ghost account" hidden>Sign in</button>
         </div>
       </header>
 
@@ -160,6 +161,29 @@
           </ol>
           <div class="dialog-buttons">
             <button class="btn primary" data-close>Got it</button>
+          </div>
+        </div>
+
+        <div id="login" class="dialog login" hidden>
+          <h2 id="login-title">Sign in</h2>
+          <p id="login-message" class="login-message" role="alert" hidden></p>
+          <div id="login-providers">
+            <p class="lead">Sign in with your Yandex or VK account.</p>
+            <div class="providers">
+              <button class="btn provider yandex" data-provider="Yandex">
+                <span class="mark" aria-hidden="true">Я</span>Sign in with Yandex ID
+              </button>
+              <button class="btn provider vk" data-provider="VkId">
+                <span class="mark" aria-hidden="true">VK</span>Sign in with VK ID
+              </button>
+            </div>
+          </div>
+          <div id="login-account" hidden>
+            <p class="lead"><b id="login-name"></b> <span id="login-via" class="muted"></span></p>
+          </div>
+          <div class="dialog-buttons">
+            <button id="sign-out" class="btn" hidden>Sign out</button>
+            <button class="btn" data-close>Close</button>
           </div>
         </div>
 

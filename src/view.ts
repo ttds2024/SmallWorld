@@ -1,3 +1,4 @@
+import { AccountView } from './account-view';
 import { nextMove } from './ai';
 import { castleStrength, shotsFor } from './battle';
 import { openSiege } from './battle-view';
@@ -150,6 +151,11 @@ export class GameView {
     this.bindControls();
     this.newGame();
     this.openDialog('#start');
+    // After the start dialog, so a sign-in error coming back from the server shows on top.
+    new AccountView(this.root, {
+      open: (sel) => this.openDialog(sel),
+      close: () => this.closeDialogs(),
+    });
   }
 
   // ----- Setup -----

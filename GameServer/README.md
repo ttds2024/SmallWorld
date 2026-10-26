@@ -48,3 +48,9 @@ provided by `appsettings.Development.json`.
   app ID is needed (`ClientSecret` is optional and not sent).
 
 Run over HTTPS (the `https` launch profile): the OAuth correlation cookies are `Secure`.
+
+### Trying it with the game
+
+Run the server with `--launch-profile https` (trust the dev certificate once with
+`dotnet dev-certs https --trust`), then `npm run dev` in the repository root. The game's
+**Sign in** button in the top bar opens the Yandex ID / VK ID dialog.
