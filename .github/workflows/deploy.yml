@@ -26,6 +26,9 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
+        env:
+          # Shows the Sign in button once the GameServer has a public address.
+          VITE_GAME_SERVER_URL: ${{ vars.GAME_SERVER_DOMAIN && format('https://{0}', vars.GAME_SERVER_DOMAIN) || '' }}
       - uses: actions/configure-pages@v5
         with:
           enablement: true

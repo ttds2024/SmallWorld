@@ -1,0 +1,27 @@
+# Runs the GameServer behind Caddy, which gets the HTTPS certificate for GAME_SERVER_DOMAIN.
+# The deploy workflow copies this file and .env (from repo secrets) to the server.
+services:
+  gameserver:
+    image: ghcr.io/ttds2024/smallworld-gameserver:latest
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - keys:/keys
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      GAME_SERVER_DOMAIN: ${GAME_SERVER_DOMAIN}
+    command: caddy reverse-proxy --from ${GAME_SERVER_DOMAIN} --to gameserver:8080
+    volumes:
+      - caddy:/data
+    depends_on:
+      - gameserver
+
+volumes:
+  keys:
+  caddy:

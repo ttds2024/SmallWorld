@@ -1,0 +1,84 @@
+name: Deploy GameServer
+
+# Builds the GameServer image and publishes it to ghcr.io/ttds2024/smallworld-gameserver.
+# When the DEPLOY_HOST secret is set, it also starts it on that server with deploy/docker-compose.yml
+# (see GameServer/README.md for the secrets and the server setup).
+
+on:
+  push:
+    branches: [main]
+    paths: [GameServer/**, .github/workflows/gameserver.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: gameserver
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/ttds2024/smallworld-gameserver
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: docker build -t "$IMAGE:latest" -t "$IMAGE:${{ github.sha }}" GameServer
+      - name: Push
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker push --all-tags "$IMAGE"
+
+  deploy:
+    needs: image
+    runs-on: ubuntu-latest
+    environment: gameserver
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.DEPLOY_HOST != ''
+      - name: Skip (no server configured)
+        if: env.DEPLOY_HOST == ''
+        run: echo "::notice::DEPLOY_HOST is not set, so the image was published but not deployed."
+      - name: Deploy over SSH
+        if: env.DEPLOY_HOST != ''
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          GAME_SERVER_DOMAIN: ${{ vars.GAME_SERVER_DOMAIN }}
+          JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
+          YANDEX_CLIENT_ID: ${{ secrets.YANDEX_CLIENT_ID }}
+          YANDEX_CLIENT_SECRET: ${{ secrets.YANDEX_CLIENT_SECRET }}
+          VKID_CLIENT_ID: ${{ secrets.VKID_CLIENT_ID }}
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          ssh_() { ssh -i ~/.ssh/id_deploy "$DEPLOY_USER@$DEPLOY_HOST" "$@"; }
+
+          umask 077
+          cat > .env <<ENV
+          GAME_SERVER_DOMAIN=$GAME_SERVER_DOMAIN
+          Jwt__SigningKey=$JWT_SIGNING_KEY
+          Authentication__Yandex__ClientId=$YANDEX_CLIENT_ID
+          Authentication__Yandex__ClientSecret=$YANDEX_CLIENT_SECRET
+          Authentication__VkId__ClientId=$VKID_CLIENT_ID
+          ENV
+
+          ssh_ "mkdir -p ~/smallworld-gameserver"
+          scp -i ~/.ssh/id_deploy GameServer/deploy/docker-compose.yml .env "$DEPLOY_USER@$DEPLOY_HOST:smallworld-gameserver/"
+          echo "${{ secrets.GITHUB_TOKEN }}" | ssh_ "docker login ghcr.io -u ${{ github.actor }} --password-stdin"
+          ssh_ "cd ~/smallworld-gameserver && docker compose pull && docker compose up -d --remove-orphans && docker image prune -f"
+          ssh_ "docker logout ghcr.io"
+
+          for i in $(seq 30); do
+            curl -fsS "https://$GAME_SERVER_DOMAIN/auth/providers" && exit 0
+            sleep 5
+          done
+          echo "::error::https://$GAME_SERVER_DOMAIN/auth/providers did not answer"
+          exit 1
